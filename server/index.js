@@ -1,46 +1,56 @@
-import { MongoClient } from "mongodb";
-import bcrypt from "bcrypt";
+import express from 'express';
+import cors from 'cors';
+import { MongoClient } from 'mongodb'; 
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt'; 
+import dotenv from 'dotenv';
 
-const uri = process.env.MONGODB_URI;
-const client = new MongoClient(uri);
+dotenv.config();
+const app = express();
+
+app.use(express.json());
+app.use(cors({
+  origin: 'http://localhost:5173', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+const MONGODB_URI = process.env.MONGODB_URI;
+const JWT_SECRET = process.env.JWT_SECRET;
+const PORT = process.env.PORT || 3001;
+const SALT_ROUNDS = 12; 
+
 let db;
 
-const SALT_ROUNDS = 10;
 
 async function connectToDatabase() {
+  const client = new MongoClient(MONGODB_URI);
   try {
     await client.connect();
-    db = client.db(process.env.DB_NAME || "ecommerce");
-    console.log("Connected to MongoDB");
+    console.log('Connected to MongoDB');
+    db = client.db(); 
 
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const adminPasswordPlain = process.env.ADMIN_PASSWORD;
-
-    const existingAdmin = await db.collection("users").findOne({ email: adminEmail });
-    if (!existingAdmin) {
-      const adminPassword = await bcrypt.hash(adminPasswordPlain, SALT_ROUNDS);
-      await db.collection("users").insertOne({
-        email: adminEmail,
-        password: adminPassword,
-        name: "Admin User",
-        role: "admin",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      console.log(`Admin user created: ${adminEmail}`);
-    }
-
-    const products = await db.collection("products").countDocuments();
-    if (products === 0) {
-      await db.collection("products").insertMany([
-        { name: "Laptop", price: 50000, description: "Powerful laptop", createdAt: new Date() },
-        { name: "Phone", price: 20000, description: "Smartphone device", createdAt: new Date() },
-      ]);
-      console.log("Sample products inserted");
-    }
-  } catch (error) {
-    console.error("Error connecting to DB:", error);
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
   }
 }
 
-connectToDatabase();
+
+function authMiddleware(req, res, next) {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'No token provided' });
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+}
+
+
+connectToDatabase().then(() => {
+  app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+});
