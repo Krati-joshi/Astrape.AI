@@ -50,7 +50,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product = null, onSubmit, onC
     if (!formData.description.trim()) newErrors.description = 'Description is required';
     if (!formData.price || formData.price <= 0) newErrors.price = 'Price must be greater than 0';
     if (!formData.imageUrl.trim()) newErrors.imageUrl = 'Image URL is required';
-    if (!formData.category?.trim()) newErrors.category = 'Category is required'; 
+    if (!formData.category?.trim()) newErrors.category = 'Category is required';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -77,7 +77,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ product = null, onSubmit, onC
         </div>
         
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
-         
           <div>
             <label htmlFor="name" className="form-label">Product Name</label>
             <input
@@ -91,7 +90,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ product = null, onSubmit, onC
             {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
           </div>
 
-      
           <div>
             <label htmlFor="description" className="form-label">Description</label>
             <textarea
@@ -105,23 +103,29 @@ const ProductForm: React.FC<ProductFormProps> = ({ product = null, onSubmit, onC
             {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
           </div>
 
-          
           <div>
             <label htmlFor="price" className="form-label">Price (₹)</label>
-            <input
-              type="number"
-              id="price"
-              name="price"
-              value={formData.price}
-              onChange={handleChange}
-              min="1"
-              step="1"
-              className={`form-input ${errors.price ? 'border-red-500' : ''}`}
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">₹</span>
+              <input
+                type="text"
+                id="price"
+                name="price"
+                value={formData.price || ''}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^\d]/g, '');
+                  setFormData(prev => ({ ...prev, price: value ? parseInt(value) : 0 }));
+                  if (errors.price) {
+                    setErrors(prev => ({ ...prev, price: '' }));
+                  }
+                }}
+                placeholder="0"
+                className={`form-input pl-8 ${errors.price ? 'border-red-500' : ''}`}
+              />
+            </div>
             {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
           </div>
 
-        
           <div>
             <label htmlFor="category" className="form-label">Category</label>
             <select
@@ -138,7 +142,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ product = null, onSubmit, onC
             </select>
             {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category}</p>}
           </div>
-
           <div>
             <label htmlFor="imageUrl" className="form-label">Image URL</label>
             <input
