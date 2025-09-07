@@ -1,6 +1,6 @@
 # Astrape AI Project
 
-A full-stack AI-powered e-commerce and chat platform, built with **React (Vite)** frontend, **Node.js + Express** backend, and **MongoDB** for the database.  
+A full-stack e-commerce , built with **React (Vite)** frontend, **Node.js + Express** backend, and **MongoDB** for the database.  
 
 ---
 
