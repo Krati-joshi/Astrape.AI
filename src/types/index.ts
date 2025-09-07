@@ -3,11 +3,6 @@ export interface User {
   name: string;
   email: string;
   role?: 'admin' | 'user';
-  bio?: string;
-  profileImage?: string;
-  phoneNumber?: string;
-  gender?: string;
-  dateOfBirth?: string;
 }
 
 export interface Product {
