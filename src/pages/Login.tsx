@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Package, Loader2, UserPlus, LogIn } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 const Login: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -17,34 +16,24 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (state.isAuthenticated) {
-      navigate('/');
-    }
+    if (state.isAuthenticated) navigate('/');
   }, [state.isAuthenticated, navigate]);
-
-  useEffect(() => {
-    if (state.error) {
-      toast.dismiss();
-      toast.error(state.error);
-    }
-  }, [state.error]);
 
   const validateForm = () => {
     const errors: typeof formErrors = {};
-    if (!email) {
-      errors.email = 'Email is required';
-    } else if (!emailRegex.test(email)) {
-      errors.email = 'Enter a valid email address';
-    }
-
-    if (!password) {
-      errors.password = 'Password is required';
-    }
-
-    if (!isLogin && !name) {
+    
+    if (!isLogin && !name.trim()) {
       errors.name = 'Name is required';
     }
-
+    
+    if (!email) errors.email = 'Email is required';
+    else if (!emailRegex.test(email)) errors.email = 'Enter a valid email address';
+    
+    if (!password) errors.password = 'Password is required';
+    else if (!isLogin && !passwordRegex.test(password)) {
+      errors.password = 'Password must contain at least 8 characters, including uppercase, lowercase, number, and special character';
+    }
+    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -59,26 +48,28 @@ const Login: React.FC = () => {
       } else {
         await signup(name, email, password);
       }
-    } catch {
+    } catch (err: any) {
+      const backendError = err?.response?.data?.error || '';
+      if (backendError.toLowerCase().includes('password')) {
+        setFormErrors(prev => ({ ...prev, password: backendError }));
+      } else if (backendError.toLowerCase().includes('email')) {
+        setFormErrors(prev => ({ ...prev, email: backendError }));
+      } else {
+        setFormErrors(prev => ({ ...prev, password: backendError }));
+      }
     }
   };
 
   const handleChange = (field: string, value: string) => {
     if (field === 'email') {
       setEmail(value);
-      if (formErrors.email && emailRegex.test(value)) {
-        setFormErrors((prev) => ({ ...prev, email: undefined }));
-      }
+      if (formErrors.email && emailRegex.test(value)) setFormErrors(prev => ({ ...prev, email: undefined }));
     } else if (field === 'password') {
       setPassword(value);
-      if (formErrors.password && value.trim()) {
-        setFormErrors((prev) => ({ ...prev, password: undefined }));
-      }
+      if (formErrors.password && value.trim()) setFormErrors(prev => ({ ...prev, password: undefined }));
     } else if (field === 'name') {
       setName(value);
-      if (formErrors.name && value.trim()) {
-        setFormErrors((prev) => ({ ...prev, name: undefined }));
-      }
+      if (formErrors.name && value.trim()) setFormErrors(prev => ({ ...prev, name: undefined }));
     }
   };
 
@@ -91,24 +82,21 @@ const Login: React.FC = () => {
   };
 
   const getInputClass = (error?: string) =>
-    `w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition ${
+    `w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition ${
       error ? 'border-red-500' : 'border-gray-300'
     }`;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-indigo-200 p-6">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl px-8 py-10 animate-fadeIn">
+    <div className="min-h-screen flex items-center justify-center bg-blue-50 p-6">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg px-8 py-10">
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-3">
-            <Package size={36} className="text-indigo-600" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-1">MyStore</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-1">{isLogin ? 'Login' : 'Sign Up'}</h1>
           <p className="text-gray-500">
-            {isLogin ? 'Sign in to manage your products' : 'Create your account'}
+            {isLogin ? 'Sign in to Astrape.AI' : 'Create your Astrape.AI account'}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           {!isLogin && (
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -118,14 +106,13 @@ const Login: React.FC = () => {
                 id="name"
                 type="text"
                 value={name}
-                onChange={(e) => handleChange('name', e.target.value)}
+                onChange={e => handleChange('name', e.target.value)}
                 className={getInputClass(formErrors.name)}
                 placeholder="Your full name"
                 disabled={state.loading}
+                autoComplete="name"
               />
-              {formErrors.name && (
-                <p className="text-red-500 text-sm mt-1">{formErrors.name}</p>
-              )}
+              {formErrors.name && <p className="text-red-500 text-sm mt-1">{formErrors.name}</p>}
             </div>
           )}
 
@@ -137,14 +124,13 @@ const Login: React.FC = () => {
               id="email"
               type="email"
               value={email}
-              onChange={(e) => handleChange('email', e.target.value)}
+              onChange={e => handleChange('email', e.target.value)}
               className={getInputClass(formErrors.email)}
               placeholder="Enter your email"
               disabled={state.loading}
+              autoComplete="email"
             />
-            {formErrors.email && (
-              <p className="text-red-500 text-sm mt-1">{formErrors.email}</p>
-            )}
+            {formErrors.email && <p className="text-red-500 text-sm mt-1">{formErrors.email}</p>}
           </div>
 
           <div>
@@ -155,38 +141,22 @@ const Login: React.FC = () => {
               id="password"
               type="password"
               value={password}
-              onChange={(e) => handleChange('password', e.target.value)}
+              onChange={e => handleChange('password', e.target.value)}
               className={getInputClass(formErrors.password)}
               placeholder={isLogin ? 'Enter your password' : 'Create a strong password'}
               disabled={state.loading}
+              autoComplete={isLogin ? 'current-password' : 'new-password'}
             />
-            {formErrors.password && (
-              <p className="text-red-500 text-sm mt-1">{formErrors.password}</p>
-            )}
+            {formErrors.password && <p className="text-red-500 text-sm mt-1">{formErrors.password}</p>}
           </div>
 
           <div>
             <button
               type="submit"
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition duration-200"
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={state.loading}
             >
-              {state.loading ? (
-                <>
-                  <Loader2 size={20} className="animate-spin" />
-                  <span>Please wait...</span>
-                </>
-              ) : isLogin ? (
-                <>
-                  <LogIn size={18} />
-                  <span>Sign in</span>
-                </>
-              ) : (
-                <>
-                  <UserPlus size={18} />
-                  <span>Create Account</span>
-                </>
-              )}
+              {state.loading ? 'Please wait...' : isLogin ? 'Login' : 'Sign Up'}
             </button>
           </div>
         </form>
@@ -194,10 +164,10 @@ const Login: React.FC = () => {
         <div className="mt-6 text-center">
           <button
             onClick={toggleMode}
-            className="text-indigo-600 hover:text-indigo-800 font-medium transition"
+            className="text-blue-600 hover:text-blue-800 font-medium transition"
             disabled={state.loading}
           >
-            {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+            {isLogin ? "Don't have an account? Sign up" : "Already have an account? Login"}
           </button>
         </div>
       </div>
