@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { MongoClient, ObjectId } from 'mongodb';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -12,7 +12,7 @@ app.use(express.json());
 
 app.use(cors({
   origin: 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
@@ -137,6 +137,7 @@ app.post('/api/signup', async (req, res) => {
       password: hashedPassword,
       name: normalizedName,
       role: 'user',
+      cart : [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -369,8 +370,13 @@ app.post('/api/cart', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    const user = await db.collection('users').findOne({ _id: new ObjectId(req.user.id) });
-    const cart = user.cart || [];
+const user = await db.collection('users').findOne({ _id: new ObjectId(req.user.id) });
+if (!user) {
+  return res.status(404).json({ error: "User not found" });
+}
+
+const cart = user.cart || [];
+
 
     const existingItem = cart.find(item => item.productId.toString() === productId);
     if (existingItem) {
@@ -471,4 +477,4 @@ app.delete('/api/cart', authMiddleware, async (req, res) => {
 
 connectToDatabase().then(() => {
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-});
+}); 
