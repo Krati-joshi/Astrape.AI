@@ -10,19 +10,21 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://astrape-ai.vercel.app',
-    'https://astrape-ai-xegi.vercel.app'
-  ],
-  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      'http://localhost:5173',
+      'https://astrape-ai.vercel.app',
+      'https://astrape-ai-xegi.vercel.app',
+      'https://astrapeai.netlify.app',
+    ],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  })
+);
 
-
-
+app.options('*', cors());
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -35,34 +37,34 @@ async function connectToDatabase() {
   const client = new MongoClient(MONGODB_URI);
   try {
     await client.connect();
-    console.log('Connected to MongoDB');
+    console.log('✅ Connected to MongoDB');
     db = client.db();
 
     const usersExists = await db.listCollections({ name: 'users' }).hasNext();
     if (!usersExists) {
       await db.createCollection('users');
       await db.collection('users').createIndex({ email: 1 }, { unique: true });
-      
-        const adminEmail = process.env.ADMIN_EMAIL;
-        const adminPasswordPlain = process.env.ADMIN_PASSWORD;
 
-        const adminPassword = await bcrypt.hash(adminPasswordPlain, SALT_ROUNDS);
+      const adminEmail = process.env.ADMIN_EMAIL;
+      const adminPasswordPlain = process.env.ADMIN_PASSWORD;
 
-        await db.collection('users').insertOne({
-          email: adminEmail,
-          password: adminPassword,
-          name: 'Admin User',
-          role: 'admin',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-        console.log(`Admin user created: ${adminEmail} / ${adminPasswordPlain}`);
+      const adminPassword = await bcrypt.hash(adminPasswordPlain, SALT_ROUNDS);
+
+      await db.collection('users').insertOne({
+        email: adminEmail,
+        password: adminPassword,
+        name: 'Admin User',
+        role: 'admin',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      console.log(`👤 Admin user created: ${adminEmail} / ${adminPasswordPlain}`);
     }
 
     const productsExists = await db.listCollections({ name: 'products' }).hasNext();
     if (!productsExists) {
       await db.createCollection('products');
-      
+
       const sampleProducts = [
         {
           name: 'Wireless Headphones',
@@ -71,7 +73,7 @@ async function connectToDatabase() {
           category: 'electronics',
           imageUrl: 'https://images.pexels.com/photos/3394650/pexels-photo-3394650.jpeg',
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         {
           name: 'Smart Watch',
@@ -80,7 +82,7 @@ async function connectToDatabase() {
           category: 'electronics',
           imageUrl: 'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg',
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         {
           name: 'Bluetooth Speaker',
@@ -89,15 +91,15 @@ async function connectToDatabase() {
           category: 'electronics',
           imageUrl: 'https://images.pexels.com/photos/1649771/pexels-photo-1649771.jpeg',
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       ];
-      
+
       await db.collection('products').insertMany(sampleProducts);
-      console.log('Sample products created');
+      console.log('📦 Sample products created');
     }
   } catch (err) {
-    console.error('MongoDB connection error:', err);
+    console.error('❌ MongoDB connection error:', err);
     process.exit(1);
   }
 }
@@ -110,7 +112,7 @@ function normalizeName(name) {
   return name
     .trim()
     .split(' ')
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ');
 }
 
@@ -125,6 +127,13 @@ function authMiddleware(req, res, next) {
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
   }
+}
+
+function adminMiddleware(req, res, next) {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
 }
 
 app.post('/api/signup', async (req, res) => {
@@ -145,31 +154,35 @@ app.post('/api/signup', async (req, res) => {
       password: hashedPassword,
       name: normalizedName,
       role: 'user',
-      cart : [],
+      cart: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
     const result = await db.collection('users').insertOne(newUser);
 
-    const token = jwt.sign({ 
-      id: result.insertedId, 
-      email: normalizedEmail, 
-      name: normalizedName,
-      role: newUser.role 
-    }, JWT_SECRET, { expiresIn: '30d' });
-
-    res.status(201).json({ 
-      token, 
-      user: { 
-        id: result.insertedId, 
-        name: normalizedName, 
+    const token = jwt.sign(
+      {
+        id: result.insertedId,
         email: normalizedEmail,
-        role: newUser.role 
-      } 
+        name: normalizedName,
+        role: newUser.role,
+      },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.status(201).json({
+      token,
+      user: {
+        id: result.insertedId,
+        name: normalizedName,
+        email: normalizedEmail,
+        role: newUser.role,
+      },
     });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Signup error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -185,57 +198,28 @@ app.post('/api/login', async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ 
-      id: user._id, 
-      email: user.email, 
-      name: user.name,
-      role: user.role || 'user'
-    }, JWT_SECRET, { expiresIn: '30d' });
-    
-    res.json({ 
-      token, 
-      user: { 
-        id: user._id, 
-        name: user.name, 
+    const token = jwt.sign(
+      {
+        id: user._id,
         email: user.email,
-        role: user.role || 'user'
-      } 
+        name: user.name,
+        role: user.role || 'user',
+      },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role || 'user',
+      },
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-function adminMiddleware(req, res, next) {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  next();
-}
-
-app.post('/api/products', authMiddleware, adminMiddleware, async (req, res) => {
-  try {
-    const { name, price, category, description, imageUrl } = req.body;
-    if (!name || !price || !category) return res.status(400).json({ error: 'Name, price, category required' });
-
-    const product = {
-      name,
-      price,
-      category,
-      description: description || '',
-      imageUrl: imageUrl || '',
-      createdBy: req.user.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    const result = await db.collection('products').insertOne(product);
-    const createdProduct = await db.collection('products').findOne({ _id: result.insertedId });
-
-    res.status(201).json(createdProduct);
-  } catch (err) {
-    console.error(err);
+    console.error('❌ Login error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
