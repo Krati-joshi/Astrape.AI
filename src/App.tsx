@@ -1,25 +1,16 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './pages/Login';
+import { ProductProvider } from './context/ProductContext';
+import { CartProvider } from './context/CartContext';
 
-const Dashboard: React.FC = () => {
-  const { state, logout } = useAuth();
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold">Welcome, {state.user?.name || 'User'}!</h1>
-      <p>You are logged in.</p>
-      <button 
-        onClick={logout} 
-        className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-      >
-        Logout
-      </button>
-    </div>
-  );
-};
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Products from './pages/Products';
+import CartPage from './pages/CartPage';
+import Header from './components/Header';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { state } = useAuth();
@@ -28,12 +19,22 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
-  
   if (!state.isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" />;
   }
 
   return <>{children}</>;
+};
+
+const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <main className="container mx-auto px-4 py-6">
+        {children}
+      </main>
+    </div>
+  );
 };
 
 const AppRoutes: React.FC = () => {
@@ -46,10 +47,33 @@ const AppRoutes: React.FC = () => {
           path="/"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <ProtectedLayout>
+                <Dashboard />
+              </ProtectedLayout>
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/products"
+          element={
+            <ProtectedRoute>
+              <ProtectedLayout>
+                <Products />
+              </ProtectedLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cart"
+          element={
+            <ProtectedRoute>
+              <ProtectedLayout>
+                <CartPage />
+              </ProtectedLayout>
+            </ProtectedRoute>
+          }
+        />
+        
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
@@ -59,8 +83,43 @@ const AppRoutes: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <AppRoutes />
-      <Toaster position="top-right" />
+      <ProductProvider>
+        <CartProvider>
+          <AppRoutes />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#1f2937',
+                color: '#fff',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                fontSize: '14px',
+                fontWeight: '500',
+              },
+              success: {
+                style: {
+                  background: '#059669',
+                },
+                iconTheme: {
+                  primary: '#fff',
+                  secondary: '#059669',
+                },
+              },
+              error: {
+                style: {
+                  background: '#dc2626',
+                },
+                iconTheme: {
+                  primary: '#fff',
+                  secondary: '#dc2626',
+                },
+              },
+            }}
+          />
+        </CartProvider>
+      </ProductProvider>
     </AuthProvider>
   );
 };
