@@ -24,7 +24,11 @@ app.use(
   })
 );
 
-app.options('*', cors());
+app.options(/.*/, cors());
+
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not Found' });
+});
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const JWT_SECRET = process.env.JWT_SECRET;
