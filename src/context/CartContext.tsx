@@ -58,7 +58,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!state.user || !state.token) return;
     setLoading(true);
     try {
-      const { data } = await axios.get('http://localhost:3001/api/cart', {
+      const { data } = await axios.get('https://astrape-ai.onrender.com/api/cart', {
         headers: { Authorization: `Bearer ${state.token}` },
       });
       setCart(data);
@@ -78,7 +78,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       if (state.user && state.token) {
-        await axios.post('http://localhost:3001/api/cart', { productId, quantity }, {
+        await axios.post('https://astrape-ai.onrender.com/api/cart', { productId, quantity }, {
           headers: { Authorization: `Bearer ${state.token}` },
         });
         await fetchCart();
@@ -87,7 +87,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const existing = cart.find(i => i.productId === productId);
         if (existing) existing.quantity += quantity;
         else {
-          const res = await axios.get('http://localhost:3001/api/products');
+          const res = await axios.get('https://astrape-ai.onrender.com/api/products');
           const product = res.data.find((p: any) => p._id === productId);
           if (product) cart.push({ productId, quantity, product });
         }
@@ -110,7 +110,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       if (state.user && state.token) {
-        await axios.patch(`http://localhost:3001/api/cart/${productId}`, { quantity }, {
+        await axios.patch(`https://astrape-ai.onrender.com/api/cart/${productId}`, { quantity }, {
           headers: { Authorization: `Bearer ${state.token}` },
         });
         await fetchCart();
@@ -130,7 +130,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       if (state.user && state.token) {
-        await axios.delete(`http://localhost:3001/api/cart/${productId}`, {
+        await axios.delete(`https://astrape-ai.onrender.com/api/cart/${productId}`, {
           headers: { Authorization: `Bearer ${state.token}` },
         });
         await fetchCart();
@@ -150,7 +150,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   setLoading(true);
   try {
     if (state.user && state.token) {
-      await axios.delete('http://localhost:3001/api/cart', {
+      await axios.delete('https://astrape-ai.onrender.com/api/cart', {
         headers: { Authorization: `Bearer ${state.token}` },
       });
     }
