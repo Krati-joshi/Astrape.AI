@@ -26,10 +26,6 @@ app.use(
 
 app.options(/.*/, cors());
 
-app.use((req, res) => {
-  res.status(404).json({ error: 'Not Found' });
-});
-
 const MONGODB_URI = process.env.MONGODB_URI;
 const JWT_SECRET = process.env.JWT_SECRET;
 const PORT = process.env.PORT || 3001;
@@ -469,6 +465,10 @@ app.delete('/api/cart', authMiddleware, async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not Found' });
 });
 
 connectToDatabase().then(() => {
