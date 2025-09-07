@@ -30,6 +30,8 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { state } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -58,13 +60,14 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!state.user || !state.token) return;
     setLoading(true);
     try {
-      const { data } = await axios.get('https://astrape-ai.onrender.com/api/cart', {
+      const { data } = await axios.get(`${API_URL}/cart`, {
         headers: { Authorization: `Bearer ${state.token}` },
       });
       setCart(data);
       localStorage.setItem('cart', JSON.stringify(data));
     } catch (err: any) {
       console.error('Error fetching cart:', err);
+      toast.error('Failed to fetch cart');
     } finally {
       setLoading(false);
     }
@@ -72,31 +75,30 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     if (state.user && state.token) fetchCart();
-  }, [state.user]);
+  }, [state.user, state.token]);
 
   const addToCart = async (productId: string, quantity: number) => {
     setLoading(true);
     try {
       if (state.user && state.token) {
-        await axios.post('https://astrape-ai.onrender.com/api/cart', { productId, quantity }, {
+        await axios.post(`${API_URL}/cart`, { productId, quantity }, {
           headers: { Authorization: `Bearer ${state.token}` },
         });
         await fetchCart();
-        toast.success('Added to cart successfully');
       } else {
         const existing = cart.find(i => i.productId === productId);
         if (existing) existing.quantity += quantity;
         else {
-          const res = await axios.get('https://astrape-ai.onrender.com/api/products');
+          const res = await axios.get(`${API_URL}/products`);
           const product = res.data.find((p: any) => p._id === productId);
           if (product) cart.push({ productId, quantity, product });
         }
         setCart([...cart]);
-        toast.success('Added to cart successfully');
       }
+      toast.success('Added to cart successfully');
     } catch (err: any) {
       console.error('Error adding to cart:', err);
-      toast.error(err.response?.data?.error || 'Network or server error while adding to cart');
+      toast.error(err.response?.data?.error || 'Network error while adding to cart');
     } finally {
       setLoading(false);
     }
@@ -110,7 +112,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       if (state.user && state.token) {
-        await axios.patch(`https://astrape-ai.onrender.com/api/cart/${productId}`, { quantity }, {
+        await axios.patch(`${API_URL}/cart/${productId}`, { quantity }, {
           headers: { Authorization: `Bearer ${state.token}` },
         });
         await fetchCart();
@@ -120,7 +122,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast.success('Cart updated successfully');
     } catch (err: any) {
       console.error('Error updating cart:', err);
-      toast.error(err.response?.data?.error || 'Network or server error while updating cart');
+      toast.error(err.response?.data?.error || 'Network error while updating cart');
     } finally {
       setLoading(false);
     }
@@ -130,7 +132,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       if (state.user && state.token) {
-        await axios.delete(`https://astrape-ai.onrender.com/api/cart/${productId}`, {
+        await axios.delete(`${API_URL}/cart/${productId}`, {
           headers: { Authorization: `Bearer ${state.token}` },
         });
         await fetchCart();
@@ -140,37 +142,51 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast.success('Removed from cart successfully');
     } catch (err: any) {
       console.error('Error removing from cart:', err);
-      toast.error(err.response?.data?.error || 'Network or server error while removing item');
+      toast.error(err.response?.data?.error || 'Network error while removing item');
     } finally {
       setLoading(false);
     }
   };
 
- const clearCart = async () => {
-  setLoading(true);
-  try {
-    if (state.user && state.token) {
-      await axios.delete('https://astrape-ai.onrender.com/api/cart', {
-        headers: { Authorization: `Bearer ${state.token}` },
-      });
+  const clearCart = async () => {
+    setLoading(true);
+    try {
+      if (state.user && state.token) {
+        await axios.delete(`${API_URL}/cart`, {
+          headers: { Authorization: `Bearer ${state.token}` },
+        });
+      }
+      setCart([]);
+      localStorage.removeItem('cart');
+      toast.success('Cart cleared successfully');
+    } catch (err: any) {
+      console.error('Error clearing cart:', err);
+      toast.error(err.response?.data?.error || 'Network error while clearing cart');
+    } finally {
+      setLoading(false);
     }
-    setCart([]);
-    localStorage.removeItem('cart');
-    toast.success('Cart cleared successfully');
-  } catch (err: any) {
-    console.error('Error clearing cart:', err);
-    toast.error(err.response?.data?.error || 'Network or server error while clearing cart');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
+  const getCartTotal = () =>
+    cart.reduce((total, i) => total + ((i.product?.price || 0) * i.quantity), 0);
 
-  const getCartTotal = () => cart.reduce((total, i) => total + ((i.product?.price || 0) * i.quantity), 0);
-  const getCartItemsCount = () => cart.reduce((total, i) => total + i.quantity, 0);
+  const getCartItemsCount = () =>
+    cart.reduce((total, i) => total + i.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ cart, loading, addToCart, updateCartItem, removeFromCart, clearCart, fetchCart, getCartTotal, getCartItemsCount }}>
+    <CartContext.Provider
+      value={{
+        cart,
+        loading,
+        addToCart,
+        updateCartItem,
+        removeFromCart,
+        clearCart,
+        fetchCart,
+        getCartTotal,
+        getCartItemsCount
+      }}
+    >
       {children}
     </CartContext.Provider>
   );
