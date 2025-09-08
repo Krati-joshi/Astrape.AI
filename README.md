@@ -67,5 +67,5 @@ ADMIN_PASSWORD=<Admin Password>
 6. Run both:
    ```bash 
     npm run start
-    ```
+    ``` 
 ---
